@@ -256,9 +256,9 @@ class EthereumIndexer(ABC):
         )
         return not_updated_addresses
 
-    def update_monitored_address(
+    def update_monitored_addresses(
         self, addresses: Sequence[str], from_block_number: int, to_block_number: int
-    ) -> int:
+    ) -> bool:
         """
         :param addresses: Addresses to have the block number updated
         :param from_block_number: Make sure that no reorg has happened checking that block number was not rollbacked
@@ -278,14 +278,14 @@ class EthereumIndexer(ABC):
             **{
                 "address__in": addresses,
                 self.database_field
-                + "__gte": from_block_number
-                - 1,  # Protect in case of reorg
+                + "__gte": from_block_number,  # Protect in case of reorg
                 self.database_field
                 + "__lt": new_to_block_number,  # Don't update to a lower block number
             }
         ).update(**{self.database_field: new_to_block_number})
 
-        if updated_addresses != len(addresses):
+        all_updated = updated_addresses == len(addresses)
+        if not all_updated:
             logger.warning(
                 "%s: Possible reorg - Cannot update all indexed addresses... Updated %d/%d addresses "
                 "from-block-number=%d to-block-number=%d",
@@ -404,7 +404,13 @@ class EthereumIndexer(ABC):
 
         processed_elements = self.process_elements(elements)
 
-        self.update_monitored_address(addresses, from_block_number, to_block_number)
+        if not self.update_monitored_addresses(
+            addresses, from_block_number, to_block_number
+        ):
+            raise ValueError(
+                "Possible reorg, indexed addresses were updated while indexer was running"
+            )
+
         return processed_elements, from_block_number, to_block_number, updated
 
     def start(self) -> Tuple[int, int]:
