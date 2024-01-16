@@ -310,7 +310,8 @@ class PriceService:
             return self.get_ftm_usd_price()
         elif self.ethereum_network in (
             EthereumNetwork.MANTLE,
-            EthereumNetwork.MANTLE_TESTNET
+            EthereumNetwork.MANTLE_TESTNET,
+            EthereumNetwork.MANTLE_SEPOLIA_TESTNET,
         ):
             return self.get_mnt_usd_price()
         else:
