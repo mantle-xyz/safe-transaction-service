@@ -17,11 +17,16 @@ from safe_eth.safe.exceptions import CannotRetrieveSafeInfoException
 from safe_eth.safe.multi_send import MultiSend
 from safe_eth.safe.safe import SafeInfo
 from web3 import Web3
+from web3.exceptions import Web3RPCError
 
 from safe_transaction_service.account_abstraction import models as aa_models
 from safe_transaction_service.utils.abis.gelato import gelato_relay_1_balance_v2_abi
 
-from ..exceptions import NodeConnectionException
+from ..exceptions import (
+    CannotGetSafeInfoFromBlockchain,
+    CannotGetSafeInfoFromDB,
+    NodeConnectionException,
+)
 from ..models import (
     EthereumTx,
     InternalTx,
@@ -31,19 +36,6 @@ from ..models import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-class SafeServiceException(Exception):
-    pass
-
-
-class CannotGetSafeInfoFromBlockchain(SafeServiceException):
-    pass
-
-
-class CannotGetSafeInfoFromDB(SafeServiceException):
-    pass
-
 
 EthereumAddress = str
 
@@ -394,7 +386,7 @@ class SafeService:
             return next_traces and InternalTx.objects.build_from_trace(
                 next_traces[0], internal_tx.ethereum_tx
             )
-        except ValueError:
+        except (ValueError, Web3RPCError):
             return None
 
     def _get_parent_internal_tx(self, internal_tx: InternalTx) -> Optional[InternalTx]:
@@ -411,5 +403,5 @@ class SafeService:
             return previous_trace and InternalTx.objects.build_from_trace(
                 previous_trace, internal_tx.ethereum_tx
             )
-        except ValueError:
+        except (ValueError, Web3RPCError):
             return None
